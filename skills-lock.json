@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "caveman": {
+      "source": "juliusbrussee/caveman",
+      "sourceType": "github",
+      "skillPath": "skills/caveman/SKILL.md",
+      "computedHash": "43ab924e4422a09c24d16dc81349771513bc801c1be21077c252952fe753e6b6"
+    },
+    "generar-tech-design": {
+      "source": "adminoryslabs/Armory",
+      "sourceType": "github",
+      "skillPath": "skills/generar-tech-design/SKILL.md",
+      "computedHash": "77dae8eb9f76d2297ec120ef2d53b445186865c791d33b33ab342af1a6a8d68c"
+    },
+    "init-agent": {
+      "source": "adminoryslabs/Armory",
+      "sourceType": "github",
+      "skillPath": "skills/init-agent/SKILL.md",
+      "computedHash": "58a4b8e0072885667848abe9178ae3fd25e1f26cffe21495107c3898e24ac933"
+    },
+    "invoke-agent": {
+      "source": "adminoryslabs/Armory",
+      "sourceType": "github",
+      "skillPath": "skills/invoke-agent/SKILL.md",
+      "computedHash": "101d5489fbab7ddf211d73ac9e290ef3f75768cb83b91dac9ae19f842be95dd7"
+    },
+    "revision-adversarial": {
+      "source": "adminoryslabs/Armory",
+      "sourceType": "github",
+      "skillPath": "skills/revision-adversarial/SKILL.md",
+      "computedHash": "665292baf3d60cab35610557052d21b2aebedd483cd5f82dad4924e2a988cb07"
+    }
+  }
+}
