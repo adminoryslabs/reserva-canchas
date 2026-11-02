@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum TipoCancha {
+  fulbito
+  voley
+}
+
+enum EstadoReserva {
+  activa
+  cancelada
+}
+
+model Cancha {
+  id       Int        @id @default(autoincrement())
+  nombre   String     @unique
+  tipo     TipoCancha
+  reservas Reserva[]
+}
+
+// ATENCIÓN (ADR-0004): NO declarar @@unique([canchaId, fecha, horaInicio]).
+// La unicidad de slot es un índice único PARCIAL (WHERE estado = 'activa') creado con SQL crudo
+// en la migración "indice_unico_parcial_reserva_activa". Un @@unique común bloquearía el slot
+// para siempre tras la primera cancelación.
+model Reserva {
+  id            Int           @id @default(autoincrement())
+  codigoReserva String        @unique @map("codigo_reserva") @db.Char(6)
+  canchaId      Int           @map("cancha_id")
+  fecha         DateTime      @db.Date
+  horaInicio    DateTime      @map("hora_inicio") @db.Time(0)
+  estado        EstadoReserva @default(activa)
+  creadoEn      DateTime      @default(now()) @map("creado_en")
+
+  cancha Cancha @relation(fields: [canchaId], references: [id])
+
+  @@index([fecha])
+}

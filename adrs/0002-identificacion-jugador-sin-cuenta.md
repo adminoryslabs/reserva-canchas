@@ -44,7 +44,17 @@ se pide dato de contacto personal (nombre/teléfono/email) para esta validación
   (no hay dato de contacto asociado para identificarlo por otra vía). Esto es aceptable para una
   demo, pero debe quedar señalado como riesgo pendiente si el proyecto pasa a producción (ver
   Riesgos técnicos abiertos en el TDD).
-- El código debe ser único por reserva activa (constraint de unicidad en la base) para evitar
-  colisiones que permitan operar sobre la reserva de otro jugador.
+- **Ciclo de vida del código:** el código **no se reutiliza nunca**, ni siquiera tras cancelar la
+  reserva. `codigo_reserva` lleva un constraint `UNIQUE` común (sin cláusula `WHERE`) sobre toda la
+  tabla. Razón: un código ya expuesto no puede ser adoptado por otra reserva futura; y el espacio
+  de 10⁶ códigos alcanza de sobra para el volumen de un complejo (del orden de decenas de miles de
+  reservas por año). Es el opuesto deliberado del índice parcial de ADR-0004: allí se necesita
+  liberar el slot; aquí se necesita quemar el código.
+- **Generación:** código aleatorio criptográficamente seguro (no secuencial), con reintento acotado
+  (ej. 5 intentos) ante colisión del `UNIQUE`; si se agotan, la API responde 500 genérico.
+- **Exposición:** la agenda del administrador (HU-04) **no muestra** el `codigo_reserva`; solo el
+  jugador que reservó lo conoce. Esto reduce la superficie de enumeración (ver ADR-0010).
+- Si 10⁶ deja de alcanzar (más canchas, más años), la migración natural es ampliar la longitud del
+  código; los códigos viejos siguen siendo válidos.
 - Como el PRD no confirmó este punto con negocio, esta decisión aplica solo al alcance de MVP/demo
   y debería revisarse antes de cualquier uso real.

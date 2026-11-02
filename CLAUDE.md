@@ -2,7 +2,7 @@
 
 ## Qué es esta carpeta
 
-Workspace de **solo documentación** (PRD + Historias de Usuario + playbooks de rol). No hay código, `package.json`, build, lint, typecheck ni tests: no los busques. Todo el contenido está en español y los artefactos nuevos deben seguir en español.
+Workspace para el proyecto de Sistema de reservas de canchas deportivas. Actualmente tiene documentación. (PRD + Historias de Usuario + playbooks de rol). No hay código, `package.json`, build, lint, typecheck ni tests: no los busques. Todo el contenido está en español y los artefactos nuevos deben seguir en español.
 
 Aunque la raíz git está un nivel arriba (`DMC - Diploma AI-First Software Architecture`), esta carpeta no es un repo propio y sus archivos están sin trackear.
 

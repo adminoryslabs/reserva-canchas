@@ -15,6 +15,12 @@ API (no hay app móvil ni integración de terceros en el alcance del PRD).
 El contrato entre frontend y backend se implementa como API REST usando Next.js API Routes (ej.
 `/api/canchas`, `/api/reservas`, `/api/reservas/[codigo]`), con rutas y verbos HTTP explícitos.
 
+Alcance de uso (ver "Conexión UI ↔ datos" en ADR 0007): la API REST es el canal de **mutaciones**
+(reservar, cancelar, login admin) y de lectura para clientes externos eventuales. Las lecturas de
+la propia UI no pasan por la API: los Server Components usan la capa de datos directamente. Los
+handlers son adaptadores delgados sobre las funciones de servicio y validan toda entrada con Zod
+(ver "Validación de entradas" en el TDD).
+
 ## Alternativas consideradas
 
 - **Server Actions de Next.js** — requiere menos código de boilerplate (invocación directa desde

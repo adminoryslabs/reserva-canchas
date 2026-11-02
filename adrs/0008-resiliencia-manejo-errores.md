@@ -16,10 +16,21 @@ proporcional al riesgo real, sin sobre-ingeniería.
 
 - **Conflicto de reserva:** la API captura la violación del constraint de unicidad de Prisma y
   responde con estado 409 y un mensaje indicando que el horario ya no está disponible (cubre HU-02,
-  escenario de caso borde).
-- **Código de reserva inválido al cancelar:** la API responde con estado 404 y un mensaje genérico
-  ("código inválido o reserva no encontrada"), sin distinguir si el código no existe o pertenece a
-  otra reserva, para no filtrar información.
+  escenario de caso borde). Además dispara la revalidación de la vista de disponibilidad (ADR-0007)
+  para que el jugador vea el slot ya ocupado sin recargar a mano.
+- **Límite de intentos excedido:** 429 con cabecera `Retry-After` (ADR-0010).
+- **Contrato de errores:** toda respuesta de error es JSON `{ "error": "<mensaje>" }` con el status
+  indicado; nunca se devuelve el error crudo de Prisma ni stack traces.
+- **Código de reserva inexistente al cancelar:** la API responde con estado 404 y un mensaje
+  genérico ("código inválido o reserva no encontrada"). El formato inválido (no son 6 dígitos)
+  responde 400 por validación de entrada, sin consultar la base.
+- **Reserva ya cancelada al cancelar:** la API responde con estado 410 y el mensaje "la reserva ya
+  no está activa", y no vuelve a modificar nada. Esto cumple el escenario 2 de HU-03. Se acepta la
+  fuga mínima de información: quien envía un código existente-pero-cancelado confirma que ese
+  código existió. Es aceptable porque (a) los códigos cancelados no se reutilizan (ADR-0002), así
+  que no otorgan acceso a nada, y (b) la enumeración está limitada por rate limiting (ADR-0010).
+  Se descartó relajar HU-03 a "404 para todo" porque eso cambiaría un criterio de aceptación ya
+  redactado sin decisión de negocio.
 - **Falla de conexión a Neon:** la API responde con estado 500 y un mensaje genérico al usuario
   ("no se pudo procesar la solicitud, intentar nuevamente"). No se implementa reintento automático
   ni circuit breaker.

@@ -23,9 +23,33 @@ proporcionalidad). **Ningún ADR fue rubricado sin intentarlo.**
 
 ---
 
+## Estado de resolución
+
+**Esta revisión ya fue atendida.** Los hallazgos C1–C4, A1–A5 y S2–S4 se incorporaron en
+TECH-DESIGN.md y los ADRs afectados (el cuerpo de cada hallazgo, más abajo, se conserva como
+evidencia del problema original y lleva su propia marca de estado). Solo S1 (diagramas) sigue
+abierto. Una nueva revisión debe evaluar el estado actual de los documentos, no re-reportar estos
+hallazgos.
+
+| Hallazgo | Resolución | Dónde |
+|---|---|---|
+| C1 | Índice único parcial vía SQL crudo; sin `@@unique` común | ADR-0004, TDD §Modelo de datos |
+| C2 | 404 (no existe) / 410 (ya cancelada) / 400 (formato); se mantiene HU-03 | ADR-0008, TDD §HU-03 |
+| C3 | Rate limiting con Upstash, agenda sin códigos | ADR-0010 (nuevo), ADR-0002, ADR-0009 |
+| C4 | Lecturas directas a servicios; mutaciones vía API REST | ADR-0007, ADR-0005, TDD §Conexión UI ↔ datos |
+| A1 | Código no reutilizable, `UNIQUE` común | ADR-0002 |
+| A2 | Pooler de Neon (`DATABASE_URL`) + `DIRECT_URL` para migraciones; singleton | ADR-0006 |
+| A3 | `DATE` + `TIME` locales; zona no confirmada como riesgo abierto | TDD §Zona horaria |
+| A4 | `revalidatePath` + `router.refresh()` ante 409 | ADR-0007, ADR-0008 |
+| A5 | Cookie firmada httpOnly/Secure/SameSite=Lax 8h, deny-by-default | ADR-0009 |
+| S1 | Pendiente (diagramas) | TDD §Riesgos |
+| S2, S3, S4 | Zod, glosario "slot", logging JSON | TDD §Aspectos transversales y §Glosario |
+
 ## Críticos
 
 ### [C1] ADR-0004 — El "constraint de unicidad para reservas activas" no es expresable como `UNIQUE` simple
+
+> **Estado: RESUELTO — índice único parcial vía SQL crudo; ver ADR-0004 y TDD §Modelo de datos.** El texto siguiente es el hallazgo original, conservado como evidencia.
 
 **Dónde:** `adrs/0004-modelo-datos-slots-fijos.md` (decisión + consecuencias), `TECH-DESIGN.md`
 §"Modelo de datos" (constraint sobre `Reserva`).
@@ -69,6 +93,8 @@ index. Documentar el paso de `$executeRaw` en la migración Prisma como parte de
 ---
 
 ### [C2] ADR-0008 contradice directamente los criterios de aceptación de HU-03
+
+> **Estado: RESUELTO — 404/410/400 distintos, se mantiene HU-03; ver ADR-0008 y TDD §HU-03.** El texto siguiente es el hallazgo original, conservado como evidencia.
 
 **Dónde:** `adrs/0008-resiliencia-manejo-errores.md` (decisión, segundo bullet);
 `HU-03-cancelar-reserva.md` §"Criterios de aceptación", Escenario 2.
@@ -119,6 +145,8 @@ vías:
 
 ### [C3] No existe ADR sobre rate limiting ni protección contra enumeración — riesgo materializado, no teórico
 
+> **Estado: RESUELTO — ADR-0010 (rate limiting con Upstash) y agenda admin sin códigos (ADR-0002, ADR-0009).** El texto siguiente es el hallazgo original, conservado como evidencia.
+
 **Dónde:** `adrs/0002-identificacion-jugador-sin-cuenta.md` (consecuencias, trade-off de
 pérdida de código); `TECH-DESIGN.md` §"Riesgos técnicos abiertos" (fuerza bruta sobre código
 de reserva y contraseña admin).
@@ -159,6 +187,8 @@ más rica, o (c) aceptar el riesgo y documentarlo como **decisión consciente** 
 ---
 
 ### [C4] Ambigüedad arquitectónica entre ADR-0005 y ADR-0007: ¿REST interno o queries directas?
+
+> **Estado: RESUELTO — lecturas directas a servicios, mutaciones vía API REST; ver ADR-0007 §Conexión UI ↔ datos, ADR-0005 y TDD.** El texto siguiente es el hallazgo original, conservado como evidencia.
 
 **Dónde:** `adrs/0005-api-rest-nextjs-routes.md` (decisión: API REST en `/api/*`);
 `adrs/0007-estado-server-components.md` (decisión: Server Components con fetch server-side);
@@ -208,6 +238,8 @@ la (3), listar las tags de invalidación.
 
 ### [A1] ADR-0002 no define el ciclo de vida del `codigo_reserva` tras cancelación
 
+> **Estado: RESUELTO — código no reutilizable, `UNIQUE` común; ver ADR-0002.** El texto siguiente es el hallazgo original, conservado como evidencia.
+
 **Dónde:** `adrs/0002-identificacion-jugador-sin-cuenta.md` §"Decisión" y §"Consecuencias";
 `TECH-DESIGN.md` §"Modelo de datos" (constraint de unicidad sobre `codigo_reserva` para
 reservas activas).
@@ -241,6 +273,8 @@ simple.
 ---
 
 ### [A2] ADR-0006 ignora el problema de connection pooling Neon + Vercel serverless
+
+> **Estado: RESUELTO — pooler de Neon + `DIRECT_URL` + singleton; ver ADR-0006.** El texto siguiente es el hallazgo original, conservado como evidencia.
 
 **Dónde:** `adrs/0006-orm-prisma.md` §"Decisión"; `TECH-DESIGN.md` §"Arquitectura de
 componentes" (Neon Postgres).
@@ -277,6 +311,8 @@ del pooler como variable de entorno separada (`DATABASE_URL` para migraciones,
 
 ### [A3] Sin ADR sobre time zone — bug latente para cualquier complejo fuera de UTC
 
+> **Estado: RESUELTO — `DATE` + `TIME` locales; ver TDD §Zona horaria. La zona real del complejo sigue como riesgo abierto.** El texto siguiente es el hallazgo original, conservado como evidencia.
+
 **Dónde:** Modelo de datos (`Reserva.fecha`, `Reserva.hora_inicio`); ADR-0004 (slots fijos).
 
 **Problema:** El TDD dice "fecha" y "hora_inicio (hora en punto dentro del rango operativo
@@ -301,6 +337,8 @@ locales, no UTC del servidor.
 
 ### [A4] ADR-0007 — el "conflicto queda cubierto por el constraint" oculta un problema de UX
 
+> **Estado: RESUELTO — `revalidatePath` + `router.refresh()` ante 409; ver ADR-0007 y ADR-0008.** El texto siguiente es el hallazgo original, conservado como evidencia.
+
 **Dónde:** `adrs/0007-estado-server-components.md` §"Consecuencias" (trade-off sobre
 actualización live).
 
@@ -324,6 +362,8 @@ jugador ve el slot actualizado sin tener que recargar manualmente.
 ---
 
 ### [A5] ADR-0009 no especifica sesión, expiración ni CSRF
+
+> **Estado: RESUELTO — cookie firmada httpOnly/Secure/SameSite=Lax 8h, deny-by-default; ver ADR-0009.** El texto siguiente es el hallazgo original, conservado como evidencia.
 
 **Dónde:** `adrs/0009-proteccion-vista-administrador.md` §"Decisión".
 
@@ -353,11 +393,15 @@ falta → 503 con mensaje claro, nunca acceso abierto).
 
 ### [S1] Sin diagrama de secuencia de cancelación ni de agenda admin
 
+> **Estado: ABIERTO — diagramas pendientes; registrado en TDD §Riesgos técnicos abiertos.** El texto siguiente es el hallazgo original, conservado como evidencia.
+
 El TDD enlaza diagramas para componentes, reserva y despliegue, pero no para cancelación
 (HU-03) ni para agenda admin (HU-04). Para mantener coherencia con el resto del documento,
 agregar `diagramas/cancelacion.html` y `diagramas/agenda-admin.html`.
 
 ### [S2] Validación de inputs no tiene decisión arquitectónica
+
+> **Estado: RESUELTO — Zod; ver TDD §Validación de entradas.** El texto siguiente es el hallazgo original, conservado como evidencia.
 
 No hay ADR ni sección que diga cómo se validan inputs: código de 6 dígitos numéricos, fecha
 en formato `YYYY-MM-DD`, hora en formato `HH:MM`, cancha existente en el seed, slot dentro
@@ -367,12 +411,16 @@ categoría de bugs.
 
 ### [S3] Nomenclatura inconsistente: "slot", "horario", "franja"
 
+> **Estado: RESUELTO — término único "slot"; ver TDD §Glosario.** El texto siguiente es el hallazgo original, conservado como evidencia.
+
 El TDD alterna entre "slot fijo" (ADR-0004), "horario" (TDD §"Modelo de datos"), "franja
 horaria" (ADR-0004 contexto) y "horarios definidos" (HU-01). Sugerencia: elegir un término
 y usarlo consistentemente. Preferencia: **"slot"** si se mantiene la metáfora técnica, o
 **"horario"** si se prioriza legibilidad para el equipo no técnico.
 
 ### [S4] Logging mínimo no decidido
+
+> **Estado: RESUELTO — logging JSON con `requestId`; ver TDD §Logging.** El texto siguiente es el hallazgo original, conservado como evidencia.
 
 No hay decisión sobre logging estructurado. Para debugging del 409 (constraint violation), la
 agenda admin o el login admin, sin logs no hay forma de investigar un fallo sin reproducirlo
