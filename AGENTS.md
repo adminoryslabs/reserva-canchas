@@ -1,10 +1,29 @@
-# AGENTS.md — test-project
+# AGENTS.md — reserva-canchas
 
-## Qué es esta carpeta
+## Qué es este repositorio
 
-Workspace para el proyecto de Sistema de reservas de canchas deportivas. Actualmente tiene documentación. No hay código, `package.json`, build, lint, typecheck ni tests: no los busques. Todo el contenido está en español y los artefactos nuevos deben seguir en español.
+Sistema de reservas de canchas deportivas (fulbito y vóley). Tiene la documentación del proyecto (PRD, Historias de Usuario, Tech Design, ADRs) y una aplicación Next.js + Prisma en construcción. Todo el contenido está en español y los artefactos nuevos deben seguir en español.
 
-Aunque la raíz git está un nivel arriba (`DMC - Diploma AI-First Software Architecture`), esta carpeta no es un repo propio y sus archivos están sin trackear.
+## Dónde está cada cosa
+
+- `PRD.md`, `HU-0X-<slug>.md`, `TECH-DESIGN.md`, `adrs/`: decisiones del producto y de la arquitectura.
+- `CONTRATO-HU-0X.md`: contrato observable de una HU (qué se ve desde afuera). Lo leen TESTER y DEV.
+- `CAMBIO-0X-<slug>.md`: pedidos de cambio del cliente, con su estado.
+- `docs/puertas.md` y `docs/openapi.yaml`: las puertas del sistema (qué recibe, qué devuelve, cómo falla).
+- `src/app/api/`: rutas HTTP. `src/app/`: pantallas. `src/server/services/`: lógica de negocio. `src/lib/`: utilidades y configuración.
+- `prisma/`: modelo de datos, migraciones y datos semilla. `tests/`: pruebas automáticas (hoy vacía).
+- Comandos: `npm run dev`, `npm run typecheck`, `npm run test`, `npm run db:up` (ver `package.json`).
+
+## Claves de Jira
+
+Toda rama, commit y PR lleva la clave de Jira de la HU (`RCAN-n`). Mapa usado en la S17:
+
+| HU | Clave |
+|---|---|
+| HU-01 Ver disponibilidad | RCAN-2 |
+| HU-02 Reservar cancha | RCAN-3 |
+| HU-03 Cancelar reserva | RCAN-4 |
+| HU-04 Calendario del administrador | RCAN-5 |
 
 ## Archivos y convenciones
 
