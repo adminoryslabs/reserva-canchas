@@ -1,0 +1,461 @@
+openapi: 3.1.0
+info:
+  title: API de reserva de canchas
+  version: 0.2.0
+  description: |
+    Contrato de las rutas HTTP que existen hoy en el código (`src/app/api/**/route.ts`).
+    Solo se documenta lo que el código implementa. Las rutas que aparecen en TECH-DESIGN.md o en los
+    ADRs pero no tienen un `route.ts` (login y agenda del administrador) no se incluyen.
+
+    Convenciones de este documento:
+    - "Evidencia" apunta a `archivo:línea` del código que respalda cada afirmación.
+    - "NO VERIFICADO" marca lo que no se puede comprobar leyendo el código.
+    - "SUPUESTO" marca valores que el código usa pero que negocio no confirmó en el PRD.
+
+    Los mensajes de error por defecto de zod se comprobaron contra la versión instalada (zod 4.6.7).
+    `package.json` declara `^4.6.7`, así que una actualización menor podría cambiar ese texto.
+
+    NO VERIFICADO: URL del servidor. No hay ningún despliegue en el repositorio, por eso no se
+    declara `servers`.
+
+# Las cuatro rutas son públicas: ninguna pide sesión ni credenciales. El middleware solo exige
+# configuración de administrador para /api/admin/*, y esa ruta no existe (middleware.ts:7-14).
+security: []
+
+tags:
+  - name: Disponibilidad
+    description: Consulta de canchas y horarios libres u ocupados.
+  - name: Reservas
+    description: Creación y cancelación de reservas.
+
+paths:
+  /api/canchas:
+    get:
+      operationId: listarCanchas
+      tags: [Disponibilidad]
+      summary: Listar las canchas del complejo
+      description: |
+        Devuelve todas las canchas registradas, ordenadas por `id` de forma ascendente.
+
+        **HU:** HU-01 (Ver disponibilidad de canchas por día y horario). Vínculo inferido: HU-01 pide
+        mostrar la disponibilidad "por cancha", y esta ruta entrega la lista de canchas. La HU no
+        menciona la ruta en forma explícita.
+
+        **Evidencia:**
+        - `src/app/api/canchas/route.ts:5-8`: handler GET, responde `{ canchas }`.
+        - `src/server/services/disponibilidad.ts:7-9`: `findMany` ordenado por `id asc`.
+        - `prisma/schema.prisma:11-14,21-26`: campos de `Cancha` y valores de `tipo`.
+      responses:
+        "200":
+          description: |
+            Lista de canchas, que puede estar vacía si no se cargó ninguna. El ejemplo usa las
+            canchas de `prisma/seed.ts:7-11`, que son datos de prueba: negocio no confirmó cuántas
+            canchas hay ni sus nombres (SUPUESTO, PRD Punto Abierto #5).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [canchas]
+                properties:
+                  canchas:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Cancha"
+              example:
+                canchas:
+                  - { id: 1, nombre: "Fulbito 1", tipo: "fulbito" }
+                  - { id: 2, nombre: "Fulbito 2", tipo: "fulbito" }
+                  - { id: 3, nombre: "Vóley 1", tipo: "voley" }
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/disponibilidad:
+    get:
+      operationId: obtenerDisponibilidad
+      tags: [Disponibilidad]
+      summary: Ver los horarios libres y ocupados de una cancha en una fecha
+      description: |
+        Devuelve todos los horarios del día para una cancha e indica cuáles están libres. Un horario
+        está ocupado si existe una reserva en estado `activa` para esa cancha, fecha y hora.
+
+        **HU:** HU-01 (Ver disponibilidad de canchas por día y horario).
+
+        **Evidencia:**
+        - `src/app/api/disponibilidad/route.ts:6-11`: handler GET y forma de la respuesta.
+        - `src/lib/validation.ts:8-14,20,28-31`: esquema `disponibilidadQuerySchema`.
+        - `src/server/services/disponibilidad.ts:11-24`: cálculo de los horarios libres.
+        - `src/lib/config.ts:1-9`: lista de horarios del día.
+
+        **Comportamiento observado en el código:**
+        - No se comprueba que la cancha exista. Un `canchaId` válido pero inexistente responde 200
+          con todos los horarios libres, no 404 (`src/server/services/disponibilidad.ts:11-24`).
+        - No hay límite de fechas: se aceptan fechas pasadas y futuras sin tope.
+        - La consulta se responde de una vez: cada horario viene marcado como libre u ocupado, y
+          el código no arma ninguna respuesta especial para el caso "no hay horarios libres"
+          (HU-01, escenario 2).
+      parameters:
+        - name: canchaId
+          in: query
+          required: true
+          description: |
+            Identificador de la cancha. Es un entero positivo. Llega como texto en la URL y zod lo
+            convierte a número (`z.coerce.number().int().positive()`).
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: fecha
+          in: query
+          required: true
+          description: Día consultado en formato `YYYY-MM-DD`. Debe ser una fecha de calendario real.
+          schema:
+            type: string
+            format: date
+            pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          example: "2026-09-20"
+      responses:
+        "200":
+          description: Horarios del día para esa cancha, cada uno marcado como libre u ocupado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [canchaId, fecha, slots]
+                properties:
+                  canchaId:
+                    type: integer
+                    description: El `canchaId` recibido, ya convertido a número.
+                  fecha:
+                    type: string
+                    format: date
+                  slots:
+                    type: array
+                    description: |
+                      Siempre trae los 14 horarios del día, de 08:00 a 21:00, cada uno de 1 hora.
+                      SUPUESTO: este horario de atención no está confirmado por el PRD
+                      (`src/lib/config.ts:1`).
+                    items:
+                      $ref: "#/components/schemas/Slot"
+              example:
+                canchaId: 1
+                fecha: "2026-09-20"
+                slots:
+                  - { horaInicio: "08:00", libre: true }
+                  - { horaInicio: "09:00", libre: true }
+                  - { horaInicio: "19:00", libre: false }
+                  - { horaInicio: "21:00", libre: true }
+        "400":
+          description: |
+            La consulta está incompleta o mal escrita: falta la cancha o la fecha, la cancha no es
+            un número entero positivo, o la fecha no existe en el calendario. Se devuelve solo el
+            primer problema encontrado, revisando primero `canchaId` y después `fecha`
+            (`src/lib/http.ts:19-21`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                canchaFaltanteONoNumerica:
+                  summary: Falta canchaId o no es un número (mensaje por defecto de zod)
+                  value: { error: "Invalid input: expected number, received NaN" }
+                canchaNoPositiva:
+                  summary: canchaId vale 0 o menos (mensaje por defecto de zod)
+                  value: { error: "Too small: expected number to be >0" }
+                canchaNoEntera:
+                  summary: canchaId tiene decimales (mensaje por defecto de zod)
+                  value: { error: "Invalid input: expected int, received number" }
+                fechaFaltante:
+                  summary: Falta fecha (mensaje por defecto de zod)
+                  value: { error: "Invalid input: expected string, received undefined" }
+                fechaMalFormada:
+                  summary: La fecha no tiene el formato YYYY-MM-DD
+                  value: { error: "fecha inválida (YYYY-MM-DD)" }
+                fechaInexistente:
+                  summary: La fecha tiene formato correcto pero no existe (ej. 2026-02-30)
+                  value: { error: "fecha inválida" }
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/reservas:
+    post:
+      operationId: crearReserva
+      tags: [Reservas]
+      summary: Reservar un horario libre de una cancha
+      description: |
+        Crea una reserva en estado `activa` y devuelve un código de 6 dígitos. El jugador no tiene
+        cuenta: ese código es su comprobante (ADR-0002). La base de datos impide que una misma
+        cancha tenga dos reservas activas para el mismo día y hora; si eso pasa, responde 409.
+
+        **HU:** HU-02 (Reservar un horario de cancha).
+
+        **Evidencia:**
+        - `src/app/api/reservas/route.ts:13-24`: handler POST, responde 201.
+        - `src/lib/validation.ts:8-26`: esquema `crearReservaSchema`.
+        - `src/lib/http.ts:39-45`: error 400 si el cuerpo no es JSON.
+        - `src/server/services/reservas.ts:22-46`: validación de la cancha, conflicto 409 y
+          reintentos del código.
+
+        **Comportamiento observado en el código:**
+        - No hay límite de fechas: se puede reservar un día pasado o cualquier día futuro. Es
+          coherente con los Puntos Abiertos del PRD (ventana de reserva sin definir).
+        - `canchaId` también se acepta como texto numérico (ej. `"1"`), porque zod lo convierte a
+          número.
+        - Los campos que sobran en el cuerpo se descartan sin error, porque `z.object` no es estricto.
+        - HU-02 no menciona el código de reserva; el desajuste está registrado en TECH-DESIGN.md,
+          sección Riesgos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [canchaId, fecha, horaInicio]
+              properties:
+                canchaId:
+                  type: integer
+                  minimum: 1
+                  description: Identificador de una cancha existente.
+                fecha:
+                  type: string
+                  format: date
+                  pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+                  description: Día de la reserva (`YYYY-MM-DD`). Debe ser una fecha de calendario real.
+                horaInicio:
+                  type: string
+                  description: |
+                    Hora de inicio del horario elegido. Solo se aceptan los valores de esta lista.
+                    SUPUESTO: el horario de 08:00 a 21:00 no está confirmado por el PRD
+                    (`src/lib/config.ts:1-9`).
+                  enum:
+                    - "08:00"
+                    - "09:00"
+                    - "10:00"
+                    - "11:00"
+                    - "12:00"
+                    - "13:00"
+                    - "14:00"
+                    - "15:00"
+                    - "16:00"
+                    - "17:00"
+                    - "18:00"
+                    - "19:00"
+                    - "20:00"
+                    - "21:00"
+            example:
+              canchaId: 1
+              fecha: "2026-09-20"
+              horaInicio: "19:00"
+      responses:
+        "201":
+          description: Reserva creada. El jugador debe guardar el código para poder identificarla.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [codigoReserva, creadoEn]
+                properties:
+                  codigoReserva:
+                    type: string
+                    pattern: "^\\d{6}$"
+                    description: Código de 6 dígitos que puede empezar con ceros (`src/server/services/reservas.ts:9-11`).
+                  creadoEn:
+                    type: string
+                    format: date-time
+                    description: Momento en que se creó la reserva, en UTC (ISO 8601).
+              example:
+                codigoReserva: "048213"
+                creadoEn: "2026-09-18T15:42:07.123Z"
+        "400":
+          description: |
+            No se pudo crear la reserva porque los datos enviados no son válidos: el cuerpo no es
+            JSON, falta algún dato, la cancha no existe, la fecha no existe en el calendario o la
+            hora está fuera del horario de atención. Se devuelve solo el primer problema encontrado
+            (`src/lib/http.ts:19-21`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                cuerpoNoJson:
+                  summary: El cuerpo no es JSON válido (src/lib/http.ts:43)
+                  value: { error: "el cuerpo debe ser JSON válido" }
+                canchaInexistente:
+                  summary: La cancha no existe (src/server/services/reservas.ts:24)
+                  value: { error: "la cancha indicada no existe" }
+                canchaFaltanteONoNumerica:
+                  summary: Falta canchaId o no es un número (mensaje por defecto de zod)
+                  value: { error: "Invalid input: expected number, received NaN" }
+                fechaMalFormada:
+                  summary: La fecha no tiene el formato YYYY-MM-DD
+                  value: { error: "fecha inválida (YYYY-MM-DD)" }
+                fechaInexistente:
+                  summary: La fecha tiene formato correcto pero no existe
+                  value: { error: "fecha inválida" }
+                horaFueraDeRango:
+                  summary: La hora no es una de las permitidas
+                  value: { error: "horario fuera del rango operativo" }
+        "409":
+          description: |
+            Otro jugador ya tiene una reserva activa en esa cancha, ese día y esa hora. No se crea
+            ninguna reserva duplicada (HU-02, escenario 2).
+            Evidencia: `src/server/services/reservas.ts:38-41`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "el horario ya no está disponible"
+        "500":
+          description: |
+            Falla inesperada del servidor, por ejemplo si la base de datos no responde. También se
+            devuelve si después de 5 intentos no se consiguió un código de reserva libre
+            (`src/server/services/reservas.ts:45`, `src/lib/config.ts:11`). En ambos casos la
+            respuesta es el mismo mensaje genérico.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "no se pudo procesar la solicitud, intentar nuevamente"
+
+  /api/reservas/{codigo}:
+    delete:
+      operationId: cancelarReserva
+      tags: [Reservas]
+      summary: Cancelar una reserva con su código
+      description: |
+        Pasa la reserva a estado `cancelada` y deja el horario libre para que otro jugador lo
+        reserve. El jugador no tiene cuenta: el código de 6 dígitos es lo único que lo identifica
+        (ADR-0002).
+
+        **HU:** HU-03 (Cancelar una reserva propia).
+
+        **Evidencia:**
+        - `src/app/api/reservas/[codigo]/route.ts:7-14`: handler DELETE, responde 204.
+        - `src/lib/validation.ts:4-6`: esquema `codigoReservaSchema`.
+        - `src/server/services/reservas.ts:48-59`: búsqueda, 404, 410 y cambio de estado.
+        - `src/lib/rate-limit.ts:35-60`: límite de intentos.
+
+        **Comportamiento observado en el código:**
+        - El límite de intentos se revisa antes que el formato del código
+          (`src/app/api/reservas/[codigo]/route.ts:8-9`).
+        - Un código mal escrito se rechaza sin consultar la base de datos.
+        - Si dos personas cancelan la misma reserva al mismo tiempo, solo una lo logra; la otra
+          recibe 410 (`src/server/services/reservas.ts:53-58`).
+        - Si el servicio que cuenta los intentos (Upstash) no responde o no está configurado, la
+          cancelación se permite igual, sin límite ("falla abierta", ADR-0010,
+          `src/lib/rate-limit.ts:53-58`).
+        - No hay límite de tiempo para cancelar (PRD Punto Abierto #4, sin definir).
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          description: Código de reserva de 6 dígitos, puede empezar con ceros.
+          schema:
+            type: string
+            pattern: "^\\d{6}$"
+          example: "048213"
+      responses:
+        "204":
+          description: Reserva cancelada. La respuesta no trae cuerpo.
+        "400":
+          description: El código no tiene 6 dígitos (`src/lib/validation.ts:6`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "el código debe tener 6 dígitos"
+        "404":
+          description: |
+            No hay ninguna reserva con ese código. El mensaje es genérico a propósito (ADR-0008).
+            Evidencia: `src/server/services/reservas.ts:50`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "código inválido o reserva no encontrada"
+        "410":
+          description: |
+            La reserva ya estaba cancelada, o alguien la canceló al mismo tiempo. No se vuelve a
+            liberar el horario (HU-03, escenario 2).
+            Evidencia: `src/server/services/reservas.ts:51,58`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "la reserva ya no está activa"
+        "429":
+          description: |
+            Más de 5 intentos por minuto desde la misma conexión (ADR-0010).
+            Evidencia: `src/lib/rate-limit.ts:22,46-51`.
+          headers:
+            Retry-After:
+              description: Segundos que hay que esperar antes de reintentar.
+              schema:
+                type: integer
+                minimum: 1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "demasiados intentos, intentar nuevamente más tarde"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+components:
+  schemas:
+    Error:
+      type: object
+      description: |
+        Formato único de error de todas las rutas (ADR-0008). Nunca incluye detalles técnicos ni
+        trazas internas.
+        Evidencia: `src/lib/http.ts:8-11` y `src/lib/http.ts:18-35`.
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Mensaje en español que explica por qué se rechazó la solicitud.
+      additionalProperties: false
+    Cancha:
+      type: object
+      description: |
+        Cancha del complejo (`prisma/schema.prisma:21-26`). La relación `reservas` no se incluye en
+        la respuesta.
+      required: [id, nombre, tipo]
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+          description: Nombre único de la cancha.
+        tipo:
+          type: string
+          enum: [fulbito, voley]
+    Slot:
+      type: object
+      description: Un horario de 1 hora de una cancha (`src/server/services/disponibilidad.ts:5`).
+      required: [horaInicio, libre]
+      properties:
+        horaInicio:
+          type: string
+          pattern: "^\\d{2}:00$"
+          description: Hora de inicio en formato `HH:00`.
+        libre:
+          type: boolean
+          description: "`false` si hay una reserva activa para esa cancha, fecha y hora."
+
+  responses:
+    ErrorInterno:
+      description: |
+        Falla inesperada del servidor, por ejemplo si la base de datos no responde. Se devuelve un
+        mensaje genérico, sin detalles internos (`src/lib/http.ts:28-34`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "no se pudo procesar la solicitud, intentar nuevamente"

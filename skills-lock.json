@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "actualizar-docs": {
+      "source": "adminoryslabs/Armory",
+      "sourceType": "github",
+      "skillPath": "skills/actualizar-docs/SKILL.md",
+      "computedHash": "4cccaad41be5c18d63ccf76f6ed998b76e201bcb4e84b1f4ca472ff924faed77"
+    }
+  }
+}
