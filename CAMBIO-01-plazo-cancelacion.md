@@ -1,6 +1,6 @@
 # CAMBIO-01 — Plazo para cancelar una reserva
 
-**Estado:** aprobado
+**Estado:** implementado (2026-11-22)
 **Pedido por:** administración del complejo
 **Fecha:** 2026-11-10
 **Fecha de aprobación:** 2026-11-10
@@ -34,4 +34,4 @@ Decisiones tomadas:
 | Efecto sobre las ausencias | Se aplica la regla tal como la pidió el cliente. Sin penalización: los pagos están fuera de alcance. | Agente, por delegación |
 | Aviso previo del plazo | No se agrega ningún aviso nuevo; el jugador solo ve el mensaje de rechazo (el Punto Abierto #6 sigue abierto). | Agente, por delegación |
 
-Artefactos actualizados: `PRD.md` (v1.1), `HU-03-cancelar-reserva.md`, `CONTRATO-HU-03.md` (v2, pendiente de gate), `adrs/0011-plazo-cancelacion-y-manejo-errores.md` (reemplaza a ADR-0008) y `TECH-DESIGN.md`. El código, `docs/puertas.md` y `docs/openapi.yaml` se actualizan cuando se implemente el cambio.
+Artefactos actualizados: `PRD.md` (v1.1), `HU-03-cancelar-reserva.md`, `CONTRATO-HU-03.md` (v2), `adrs/0011-plazo-cancelacion-y-manejo-errores.md` (reemplaza a ADR-0008) y `TECH-DESIGN.md`. Implementado el 2026-11-22: `src/server/services/reservas.ts` (regla de 2 horas), `src/lib/config.ts` (zona `America/Lima` por defecto), `tests/hu-03-cancelar.test.ts`, `docs/puertas.md` y `docs/openapi.yaml`. Verificado en `VEREDICTO-HU-03.md`.

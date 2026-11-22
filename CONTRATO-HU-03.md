@@ -1,6 +1,6 @@
 # CONTRATO — HU-03 Cancelar una reserva propia
 
-**Versión:** v2 · **Estado:** pendiente de gate · **Jira:** RCAN-4
+**Versión:** v2 · **Estado:** aprobado · implementado (ver `VEREDICTO-HU-03.md`) · **Jira:** RCAN-4
 
 Describe lo que se ve desde afuera. Es lo único que leen el TESTER y el DEV. Cómo se implementa por dentro es libertad del DEV.
 
