@@ -12,6 +12,10 @@ export const MAX_INTENTOS_CODIGO = 5;
 export const ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60;
 export const ADMIN_COOKIE_NAME = "admin_session";
 
+// Plazo para cancelar (regla de negocio 1 del PRD, CAMBIO-01).
+export const PLAZO_CANCELACION_MS = 2 * 60 * 60 * 1000;
+
+// ADR-0011: la zona del complejo es America/Lima; también es el valor por defecto.
 export function complexTimezone(): string {
-  return process.env.COMPLEX_TIMEZONE || "UTC";
+  return process.env.COMPLEX_TIMEZONE || "America/Lima";
 }
