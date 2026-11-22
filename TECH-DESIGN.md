@@ -12,6 +12,8 @@ Historias de Usuario HU-01 a HU-04.
 - **Abierto tras la revisión:** diagramas por actualizar (S1), Historias de Usuario por alinear con
   ADR-0002/0008 y zona horaria del complejo sin confirmar. Detalle en "Riesgos técnicos abiertos".
 - Una revisión posterior debe evaluar el contenido actual, no los hallazgos ya resueltos.
+- **CAMBIO-01 (2026-11-10):** plazo de cancelación de 2 horas y zona horaria `America/Lima`. ADR-0011
+  reemplaza a ADR-0008.
 
 ## Resumen
 
@@ -67,9 +69,10 @@ Resuelta en ADR-0007 ("Conexión UI ↔ datos"):
 | [ADR-0005](adrs/0005-api-rest-nextjs-routes.md) | Contrato de API REST vía Next.js API Routes | Aceptado |
 | [ADR-0006](adrs/0006-orm-prisma.md) | Prisma como ORM para Neon Postgres | Aceptado |
 | [ADR-0007](adrs/0007-estado-server-components.md) | Estado en el servidor vía Server Components, sin librería de estado cliente | Aceptado |
-| [ADR-0008](adrs/0008-resiliencia-manejo-errores.md) | Manejo de errores proporcional al riesgo de un MVP | Aceptado |
+| [ADR-0008](adrs/0008-resiliencia-manejo-errores.md) | Manejo de errores proporcional al riesgo de un MVP | Reemplazado por ADR-0011 |
 | [ADR-0009](adrs/0009-proteccion-vista-administrador.md) | Protección de la vista de administrador con contraseña única (cookie firmada, deny-by-default) | Aceptado |
 | [ADR-0010](adrs/0010-rate-limiting-enumeracion.md) | Rate limiting por IP en cancelación y login admin (Upstash) | Aceptado |
+| [ADR-0011](adrs/0011-plazo-cancelacion-y-manejo-errores.md) | Manejo de errores con plazo de cancelación (reemplaza a ADR-0008) | Aceptado |
 
 ## Modelo de datos
 
@@ -114,10 +117,11 @@ Se usa un único término por concepto en el TDD, los ADRs y el código:
 
 `fecha` y `hora_inicio` son la fecha y la hora **locales del complejo**, almacenadas como `DATE` y
 `TIME` sin zona, sin conversión en ninguna capa. El seed genera los slots en hora local y la UI
-muestra esos valores tal cual, nunca la hora UTC del servidor. La única operación que necesita
-saber qué día es "hoy" (fecha por defecto de la vista) usa la zona configurada en la variable de
-entorno `COMPLEX_TIMEZONE` (ej. un identificador IANA). La zona real del complejo **no está
-confirmada por el PRD**: queda como Punto Abierto técnico (ver Riesgos).
+muestra esos valores tal cual, nunca la hora UTC del servidor. Dos operaciones necesitan la hora
+actual del complejo: saber qué día es "hoy" (fecha por defecto de la vista) y revisar el plazo de
+cancelación (HU-03). Ambas usan la zona de la variable de entorno `COMPLEX_TIMEZONE`. La zona del
+complejo es `America/Lima` (CAMBIO-01), que también es el valor por defecto si la variable falta
+(ADR-0011). Lima no tiene horario de verano.
 
 ## Criterios de aceptación por flujo
 
@@ -148,12 +152,16 @@ confirmada por el PRD**: queda como Punto Abierto técnico (ver Riesgos).
 - [ ] El jugador debe ingresar el `codigo_reserva` para cancelar una reserva.
 - [ ] Si el código no tiene formato válido (no son 6 dígitos), la API responde 400 sin consultar la
       base. Si el formato es válido pero no corresponde a ninguna reserva, responde 404 con mensaje
-      genérico (ADR-0008).
+      genérico (ADR-0011).
 - [ ] Al cancelar, la `Reserva` pasa a estado `cancelada` y su slot vuelve a aparecer como libre en
       la vista de disponibilidad.
 - [ ] Si se intenta cancelar una reserva que ya está en estado `cancelada`, la API responde 410 con
       el mensaje "la reserva ya no está activa" y no repite la liberación del slot (cumple HU-03
-      escenario 2; ADR-0008).
+      escenario 2; ADR-0011).
+- [ ] Si la reserva está activa y faltan menos de 2 horas para su inicio en hora de Lima (o el
+      horario ya pasó), la API responde 409 con el mensaje "ya no se puede cancelar: faltan menos
+      de 2 horas para el horario reservado" y la reserva sigue activa. Si faltan exactamente 2
+      horas, se cancela (HU-03 escenarios 3 y 4; ADR-0011).
 - [ ] Tras 5 intentos por minuto desde la misma IP, la API responde 429 con `Retry-After`
       (ADR-0010).
 
@@ -198,7 +206,7 @@ registra la contraseña de admin ni el `codigo_reserva` completo. Sin plataforma
 | `ADMIN_PASSWORD` | Contraseña única de admin; requerida (ADR-0009) |
 | `ADMIN_SESSION_SECRET` | Firma de la cookie de sesión admin; requerida (ADR-0009) |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Rate limiting (ADR-0010) |
-| `COMPLEX_TIMEZONE` | Zona para calcular "hoy" (ver "Zona horaria") |
+| `COMPLEX_TIMEZONE` | Zona del complejo para calcular "hoy" y el plazo de cancelación; `America/Lima` (ver "Zona horaria") |
 
 ## Riesgos técnicos abiertos
 
@@ -209,22 +217,23 @@ registra la contraseña de admin ni el `codigo_reserva` completo. Sin plataforma
   IP y sin exponer códigos en la agenda admin (ADR-0010, ADR-0002). **Riesgo residual**: un
   atacante con muchas IPs distribuidas no queda cubierto; debe reevaluarse antes de un uso real.
 - **Fuga mínima de información en la cancelación**: el 410 revela que un código existió y fue
-  cancelado (ADR-0008). Aceptada: los códigos cancelados no se reutilizan ni dan acceso a nada.
+  cancelado (ADR-0011). Aceptada: los códigos cancelados no se reutilizan ni dan acceso a nada.
 - **Contraseña única de administrador**: sin sistema de usuarios ni auditoría de acceso (ADR-0009);
   aceptable para MVP, insuficiente si hay más de un administrador o se requiere trazabilidad.
 - **Dependencia de un servicio externo para rate limiting** (Upstash): su caída deja el login admin
   denegado (falla cerrada) y la cancelación sin límite (falla abierta) (ADR-0010).
-- **Zona horaria del complejo no confirmada**: el PRD no la define. Solo afecta el cálculo de la
-  fecha "hoy" por defecto; no hay conversión de horas almacenadas. Pregunta a negocio: ¿en qué zona
-  horaria opera el complejo?
+- **Plazo de cancelación dependiente del reloj**: la regla de 2 horas usa el reloj del servidor y
+  la zona `America/Lima`. Un reloj desfasado o una zona mal configurada corre el corte. Las pruebas
+  deben poder fijar la hora actual (ADR-0011).
+- **Reservas que no se pueden cancelar**: mientras el Punto Abierto #3 (ventana de reserva) siga
+  abierto, una reserva hecha con menos de 2 horas de anticipación no se puede cancelar nunca.
 - **Historias de Usuario desalineadas con los ADRs**: HU-02, HU-03 y HU-04 no mencionan el código
   de reserva ni el estado 410; las HU deben actualizarse para reflejar ADR-0002 y ADR-0008. HU-04
   debe aclarar que la agenda no muestra el código. Hasta entonces, los criterios de este TDD son
   los vigentes para la implementación.
-- **Puntos abiertos del PRD no resueltos por esta arquitectura** (ventana de reserva, política de
-  cancelación, notificaciones — Puntos Abiertos #3, #4 y #6 del PRD): esta arquitectura
-  deliberadamente no construye ningún límite de fechas, bloqueo de cancelación o canal de
-  notificación, ya que el PRD indica explícitamente que no deben asumirse sin confirmación de
+- **Puntos abiertos del PRD no resueltos por esta arquitectura** (ventana de reserva y
+  notificaciones — Puntos Abiertos #3 y #6 del PRD): esta arquitectura deliberadamente no construye
+  ningún límite de fechas para reservar ni canal de notificación, ya que el PRD indica explícitamente que no deben asumirse sin confirmación de
   negocio.
 - **Diagramas pendientes de actualizar**: los diagramas enlazados no se regeneraron tras estos
   ajustes. Deben reflejar (a) lecturas directas de Server Components a la capa de datos, (b)

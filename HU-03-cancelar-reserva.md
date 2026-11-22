@@ -6,7 +6,7 @@ Quiero **cancelar una reserva que hice**
 Para **liberar el horario cuando ya no pueda asistir, sin llamar ni escribir al complejo**
 
 ## Contexto
-Cubre Alcance — Incluye ("Cancelar una reserva propia") — a diferencia de otros proyectos, aquí la cancelación está explícitamente dentro del alcance, sin conflicto entre secciones del PRD. Apoya el Criterio de éxito: *"un jugador puede reservar una cancha de principio a fin sin llamar ni escribir al complejo"* (cancelar es parte de ese ciclo completo).
+Cubre Alcance — Incluye ("Cancelar una reserva propia") — a diferencia de otros proyectos, aquí la cancelación está explícitamente dentro del alcance, sin conflicto entre secciones del PRD. Apoya el Criterio de éxito: *"un jugador puede reservar una cancha de principio a fin sin llamar ni escribir al complejo"* (cancelar es parte de ese ciclo completo). Desde CAMBIO-01 aplica la regla de negocio 1 del PRD ("Plazo para cancelar"): solo se puede cancelar hasta 2 horas antes del horario, en hora de Lima.
 
 ## Criterios de aceptación (Gherkin)
 
@@ -30,9 +30,30 @@ Feature: Cancelación de reserva
     And no repite la liberación del horario
 ```
 
+### Escenario 3 — Caso borde: cancelar fuera de plazo (CAMBIO-01)
+```gherkin
+  Scenario: Jugador intenta cancelar con menos de 2 horas de anticipación
+    Given el jugador tiene una reserva confirmada para la cancha "Fulbito 1" el día "2026-09-20" a las "19:00"
+    And son las "17:30" del día "2026-09-20" en hora de Lima
+    When el jugador intenta cancelar esa reserva
+    Then el sistema informa que ya no se puede cancelar porque faltan menos de 2 horas para el horario reservado
+    And la reserva sigue activa
+    And el horario sigue ocupado
+```
+
+### Escenario 4 — Caso borde: cancelar justo en el límite (CAMBIO-01)
+```gherkin
+  Scenario: Jugador cancela cuando faltan exactamente 2 horas
+    Given el jugador tiene una reserva confirmada para la cancha "Fulbito 1" el día "2026-09-20" a las "19:00"
+    And son las "17:00" del día "2026-09-20" en hora de Lima
+    When el jugador cancela esa reserva
+    Then el sistema marca la reserva como cancelada
+    And libera el horario para que otro jugador pueda reservarlo
+```
+
 ## Puntos abiertos
 - **Identificación del jugador** — mismo punto que HU-02 (Punto Abierto #2). Sin definir cómo se identifica al jugador, no se puede validar que la reserva es "propia" antes de permitir cancelarla.
-- **Política de cancelación** — *¿Existe un límite de tiempo antes del horario reservado a partir del cual ya no se puede cancelar?* No definido en el PRD (Punto Abierto #4). No se debe construir ninguna ventana de bloqueo o penalización sin confirmar esto.
+- **Política de cancelación** — **Cerrado (CAMBIO-01, 2026-11-10).** Se resolvió como regla de negocio 1 del PRD: cancelar solo hasta 2 horas antes, en hora de Lima (escenarios 3 y 4). No incluye penalización.
 - **Notificaciones** — *¿Se notifica la cancelación al jugador y/o al administrador por algún canal (push/email/SMS), o solo se refleja visualmente en la app/calendario?* No definido en el PRD (Punto Abierto #6). Esta HU solo asume que la cancelación se refleja visualmente en la app; cualquier notificación activa queda pendiente de negocio.
 
 ## Fuera de alcance (explícitamente excluido en el PRD)
