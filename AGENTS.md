@@ -2,21 +2,22 @@
 
 ## Qué es este repositorio
 
-Sistema de reservas de canchas deportivas (fulbito y vóley). Tiene la documentación del proyecto (PRD, Historias de Usuario, Tech Design, ADRs) y una aplicación Next.js + Prisma en construcción. Todo el contenido está en español y los artefactos nuevos deben seguir en español.
+Sistema de reservas de canchas deportivas (fulbito y vóley). Tiene la documentación del proyecto (PRD, Historias de Usuario, Tech Design, ADRs) y la aplicación Next.js + Prisma que cubre HU-01 a HU-04. Todo el contenido está en español y los artefactos nuevos deben seguir en español.
 
 ## Dónde está cada cosa
 
 - `PRD.md`, `HU-0X-<slug>.md`, `TECH-DESIGN.md`, `adrs/`: decisiones del producto y de la arquitectura.
 - `CONTRATO-HU-0X.md`: contrato observable de una HU (qué se ve desde afuera). Lo leen TESTER y DEV.
 - `CAMBIO-0X-<slug>.md`: pedidos de cambio del cliente, con su estado.
+- `VEREDICTO-HU-0X.md`: resultado de verificar cada HU contra sus escenarios, con lo NO VERIFICADO.
 - `docs/puertas.md` y `docs/openapi.yaml`: las puertas del sistema (qué recibe, qué devuelve, cómo falla).
 - `src/app/api/`: rutas HTTP. `src/app/`: pantallas. `src/server/services/`: lógica de negocio. `src/lib/`: utilidades y configuración.
-- `prisma/`: modelo de datos, migraciones y datos semilla. `tests/`: pruebas automáticas (hoy vacía).
+- `prisma/`: modelo de datos, migraciones y datos semilla. `tests/`: pruebas automáticas, una por HU (corren contra el Postgres local: `npm run db:up` antes de `npm run test`).
 - Comandos: `npm run dev`, `npm run typecheck`, `npm run test`, `npm run db:up` (ver `package.json`).
 
 ## Claves de Jira
 
-Toda rama, commit y PR lleva la clave de Jira de la HU (`RCAN-n`). Mapa usado en la S17:
+Toda rama, commit y PR lleva la clave de Jira de la HU (`RCAN-n`). Mapa:
 
 | HU | Clave |
 |---|---|

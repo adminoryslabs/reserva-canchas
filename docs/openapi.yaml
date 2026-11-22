@@ -1,11 +1,11 @@
 openapi: 3.1.0
 info:
   title: API de reserva de canchas
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Contrato de las rutas HTTP que existen hoy en el código (`src/app/api/**/route.ts`).
-    Solo se documenta lo que el código implementa. Las rutas que aparecen en TECH-DESIGN.md o en los
-    ADRs pero no tienen un `route.ts` (login y agenda del administrador) no se incluyen.
+    Solo se documenta lo que el código implementa. La agenda del administrador es una pantalla
+    (`/admin`), no una ruta de la API: está en `docs/puertas.md`.
 
     Convenciones de este documento:
     - "Evidencia" apunta a `archivo:línea` del código que respalda cada afirmación.
@@ -18,8 +18,8 @@ info:
     NO VERIFICADO: URL del servidor. No hay ningún despliegue en el repositorio, por eso no se
     declara `servers`.
 
-# Las cuatro rutas son públicas: ninguna pide sesión ni credenciales. El middleware solo exige
-# configuración de administrador para /api/admin/*, y esa ruta no existe (middleware.ts:7-14).
+# Las rutas son públicas: ninguna pide sesión. /api/admin/login es la que emite la sesión de
+# administrador. El middleware exige configuración de administrador para /api/admin/* (middleware.ts:7-14).
 security: []
 
 tags:
@@ -27,6 +27,8 @@ tags:
     description: Consulta de canchas y horarios libres u ocupados.
   - name: Reservas
     description: Creación y cancelación de reservas.
+  - name: Administración
+    description: Acceso del administrador a la agenda diaria (ADR-0009).
 
 paths:
   /api/canchas:
@@ -333,7 +335,7 @@ paths:
         **Evidencia:**
         - `src/app/api/reservas/[codigo]/route.ts:7-14`: handler DELETE, responde 204.
         - `src/lib/validation.ts:4-6`: esquema `codigoReservaSchema`.
-        - `src/server/services/reservas.ts:48-59`: búsqueda, 404, 410 y cambio de estado.
+        - `src/server/services/reservas.ts:48-65`: búsqueda, 404, 410, plazo (409) y cambio de estado.
         - `src/lib/rate-limit.ts:35-60`: límite de intentos.
 
         **Comportamiento observado en el código:**
@@ -345,7 +347,9 @@ paths:
         - Si el servicio que cuenta los intentos (Upstash) no responde o no está configurado, la
           cancelación se permite igual, sin límite ("falla abierta", ADR-0010,
           `src/lib/rate-limit.ts:53-58`).
-        - No hay límite de tiempo para cancelar (PRD Punto Abierto #4, sin definir).
+        - Solo se puede cancelar hasta 2 horas antes del inicio, en hora de Lima; si faltan
+          exactamente 2 horas, se cancela (PRD regla 1, CAMBIO-01, ADR-0011,
+          `src/server/services/reservas.ts:53-57`). Orden de las comprobaciones: 400 → 404 → 410 → 409.
       parameters:
         - name: codigo
           in: path
@@ -380,13 +384,24 @@ paths:
           description: |
             La reserva ya estaba cancelada, o alguien la canceló al mismo tiempo. No se vuelve a
             liberar el horario (HU-03, escenario 2).
-            Evidencia: `src/server/services/reservas.ts:51,58`.
+            Evidencia: `src/server/services/reservas.ts:51,64`.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
               example:
                 error: "la reserva ya no está activa"
+        "409":
+          description: |
+            La reserva sigue activa pero faltan menos de 2 horas para su inicio (o el horario ya
+            pasó). No se cancela (HU-03, escenarios 3 y 4; ADR-0011).
+            Evidencia: `src/server/services/reservas.ts:53-57`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "ya no se puede cancelar: faltan menos de 2 horas para el horario reservado"
         "429":
           description: |
             Más de 5 intentos por minuto desde la misma conexión (ADR-0010).
@@ -403,6 +418,72 @@ paths:
                 $ref: "#/components/schemas/Error"
               example:
                 error: "demasiados intentos, intentar nuevamente más tarde"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+
+  /api/admin/login:
+    post:
+      operationId: loginAdministrador
+      tags: [Administración]
+      summary: Ingresar con la contraseña del administrador
+      description: |
+        Compara la contraseña con la configurada y, si coincide, emite la cookie de sesión que
+        permite ver la agenda en `/admin` (HU-04, ADR-0009).
+
+        **Evidencia:** `src/app/api/admin/login/route.ts:10-27`, `src/lib/admin-session.ts`.
+
+        **Comportamiento observado en el código:**
+        - Sin `ADMIN_PASSWORD` o `ADMIN_SESSION_SECRET` responde 503 (`route.ts:11`, `middleware.ts:7-14`).
+        - El límite de intentos se revisa antes que la contraseña y "falla cerrado": si Upstash no
+          responde o no está configurado, responde 503 (ADR-0010, `route.ts:12`).
+        - La cookie dura 8 horas; el atributo `Secure` solo se agrega en producción (`route.ts:20-24`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  minLength: 1
+      responses:
+        "204":
+          description: Contraseña correcta. Sin cuerpo.
+          headers:
+            Set-Cookie:
+              description: "`admin_session=<valor firmado>; Path=/; HttpOnly; SameSite=Lax; Max-Age=28800`"
+              schema:
+                type: string
+        "400":
+          description: El cuerpo no es JSON válido o falta la contraseña.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Contraseña incorrecta. No se emite cookie (`route.ts:15-18`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "contraseña incorrecta"
+        "429":
+          description: Más de 5 intentos por minuto desde la misma conexión (ADR-0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Acceso de administración sin configurar, o servicio de límite de intentos no disponible.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "el acceso de administración no está configurado"
         "500":
           $ref: "#/components/responses/ErrorInterno"
 
