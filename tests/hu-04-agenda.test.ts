@@ -21,7 +21,7 @@ describe("HU-04 · Agenda diaria del administrador", () => {
   beforeEach(async () => {
     process.env.ADMIN_PASSWORD = "clave-de-prueba";
     process.env.ADMIN_SESSION_SECRET = "secreto-de-prueba";
-    process.env.RATE_LIMIT_DISABLED = "1";
+    process.env.RATE_LIMIT_DISABLED = "true";
     await baseLimpia();
   });
 
