@@ -18,7 +18,7 @@ export default function CancelarPage() {
         setMensaje(body?.error ?? "No se pudo cancelar la reserva.");
       }
     } catch {
-      setMensaje("No se pudo conectar. Intentá nuevamente.");
+      setMensaje("No se pudo conectar. Intenta nuevamente.");
     }
   }
 

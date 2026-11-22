@@ -22,3 +22,12 @@ export async function obtenerDisponibilidad(
     libre: !ocupadasSet.has(horaInicio),
   }));
 }
+
+// Vista del jugador (HU-01): todas las canchas de un día y si queda algún horario libre.
+export async function disponibilidadDelDia(fecha: string) {
+  const canchas = await listarCanchas();
+  const conSlots = await Promise.all(
+    canchas.map(async (c) => ({ ...c, slots: await obtenerDisponibilidad(c.id, fecha) })),
+  );
+  return { canchas: conSlots, hayLibres: conSlots.some((c) => c.slots.some((s) => s.libre)) };
+}
