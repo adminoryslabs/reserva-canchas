@@ -13,7 +13,10 @@ async function estado(codigo: string) {
 }
 
 describe("HU-03 · Cancelar una reserva propia", () => {
-  beforeEach(baseLimpia);
+  beforeEach(async () => {
+    process.env.COMPLEX_TIMEZONE = "America/Lima"; // el contrato fija la hora de Lima
+    await baseLimpia();
+  });
 
   it("Escenario 1: cancela una reserva vigente y libera el horario", async () => {
     const { codigoReserva } = await crearReserva(reserva);

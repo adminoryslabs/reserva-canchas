@@ -1,8 +1,8 @@
 import { randomInt } from "node:crypto";
 import { Prisma } from "@prisma/client";
-import { MAX_INTENTOS_CODIGO } from "@/lib/config";
+import { MAX_INTENTOS_CODIGO, PLAZO_CANCELACION_MS } from "@/lib/config";
 import { prisma } from "@/lib/db";
-import { fechaToDate, horaToDate } from "@/lib/dates";
+import { fechaToDate, horaToDate, inicioReserva } from "@/lib/dates";
 import { AppError } from "@/lib/errors";
 import type { CrearReservaInput } from "@/lib/validation";
 
@@ -45,10 +45,16 @@ export async function crearReserva(input: CrearReservaInput) {
   throw new Error("no se pudo generar un código de reserva único");
 }
 
-export async function cancelarReserva(codigo: string): Promise<void> {
+export async function cancelarReserva(codigo: string, now: Date = new Date()): Promise<void> {
   const reserva = await prisma.reserva.findUnique({ where: { codigoReserva: codigo } });
   if (!reserva) throw new AppError(404, "código inválido o reserva no encontrada");
   if (reserva.estado === "cancelada") throw new AppError(410, "la reserva ya no está activa");
+
+  // CAMBIO-01 / ADR-0011: hasta 2 horas antes del inicio, inclusive; orden 404 → 410 → 409.
+  const inicio = inicioReserva(reserva.fecha, reserva.horaInicio);
+  if (inicio.getTime() - now.getTime() < PLAZO_CANCELACION_MS) {
+    throw new AppError(409, "ya no se puede cancelar: faltan menos de 2 horas para el horario reservado");
+  }
 
   // Condicionado a estado activa: ante dos cancelaciones concurrentes solo una modifica la fila.
   const { count } = await prisma.reserva.updateMany({
