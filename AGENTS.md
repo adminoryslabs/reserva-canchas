@@ -41,6 +41,13 @@ Toda rama, commit y PR lleva la clave de Jira de la HU (`RCAN-n`). Mapa:
 - No redactar una suposición como si ya estuviera decidida; separar lo construido de lo supuesto.
 - Elementos extra que agregan las herramientas de diseño (Stitch, etc.) se reportan como pendientes de aprobación, no se dejan pasar.
 
+## Seguridad
+
+Reglas que salen de `SECURITY-REPORT.md` (Security Pass del 2026-11-24). Solo incluye los hallazgos ya resueltos o decididos; los demás siguen abiertos en el informe.
+
+- **SEC-01 · Crear reservas no tiene límite de intentos — riesgo aceptado** (2026-11-24, `TECH-DESIGN.md` §"Riesgos técnicos abiertos"). No agregues rate limiting a `POST /api/reservas` por iniciativa propia: la falta de límite es una decisión, no un descuido.
+- **SEC-02 · Next.js con avisos críticos — mitigado** (RCAN-9, `next@15.5.29`). No bajes `next` de 15.5.29. Si tocas dependencias, corre `npm audit --omit=dev` antes de cerrar el cambio. Nunca uses `npm audit fix --force`: propone pasar a `next` 16, que es un cambio de versión mayor.
+
 ## Coordinación multi-agente (Herdr)
 
 - Ver agentes activos en la sesión: `herdr agent list` (identificar al destinatario por `terminal_title`).
