@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { ADMIN_COOKIE_NAME } from "@/lib/config";
 import { verifySessionValue } from "@/lib/admin-session";
@@ -19,7 +20,13 @@ export default async function AdminPage({
     return (
       <main>
         <h1>Agenda del administrador</h1>
-        <FormularioLogin />
+        <section className="card">
+          <h2>Acceso de administración</h2>
+          <FormularioLogin />
+        </section>
+        <p className="pie">
+          <Link href="/">Volver a reservas</Link>
+        </p>
       </main>
     );
   }
@@ -32,27 +39,34 @@ export default async function AdminPage({
   return (
     <main>
       <h1>Agenda del administrador</h1>
-      <form>
-        <label>
-          Día <input type="date" name="fecha" defaultValue={fecha} />
-        </label>{" "}
-        <button type="submit">Ver agenda</button>
-      </form>
+      <p className="sub">Reservas activas por cancha y horario.</p>
+      <section className="card">
+        <form className="barra">
+          <label className="campo">
+            <span>Día</span>
+            <input type="date" name="fecha" defaultValue={fecha} />
+          </label>
+          <button type="submit">Ver agenda</button>
+        </form>
 
-      {agenda.length === 0 ? (
-        <p>No hay reservas para este día.</p>
-      ) : (
-        [...porCancha].map(([cancha, reservas]) => (
-          <section key={cancha}>
-            <h2>{cancha}</h2>
-            <ul>
-              {reservas.map((r) => (
-                <li key={r.horaInicio}>{r.horaInicio} — reservado</li>
-              ))}
-            </ul>
-          </section>
-        ))
-      )}
+        {agenda.length === 0 ? (
+          <p className="vacio">No hay reservas para este día.</p>
+        ) : (
+          [...porCancha].map(([cancha, reservas]) => (
+            <div key={cancha} className="grupo">
+              <h2>{cancha}</h2>
+              <ul>
+                {reservas.map((r) => (
+                  <li key={r.horaInicio}>{r.horaInicio}</li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+      </section>
+      <p className="pie">
+        <Link href="/">Volver a reservas</Link>
+      </p>
     </main>
   );
 }

@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 
 type Props = { canchaId: number; fecha: string; horaInicio: string };
 
-// HU-02: confirma la reserva y muestra el código que el jugador debe guardar (ADR-0002).
 export function BotonReservar({ canchaId, fecha, horaInicio }: Props) {
   const router = useRouter();
-  const [mensaje, setMensaje] = useState("");
+  const [paso, setPaso] = useState<"inicio" | "confirmar" | "enviando">("inicio");
+  const [codigo, setCodigo] = useState("");
+  const [error, setError] = useState("");
 
   async function reservar() {
-    if (!confirm(`¿Confirmas la reserva para el ${fecha} a las ${horaInicio}?`)) return;
+    setPaso("enviando");
+    setError("");
     try {
       const res = await fetch("/api/reservas", {
         method: "POST",
@@ -20,22 +22,49 @@ export function BotonReservar({ canchaId, fecha, horaInicio }: Props) {
       });
       const body = await res.json().catch(() => null);
       if (res.ok) {
-        setMensaje(
-          `Reserva confirmada. Tu código es ${body.codigoReserva}: guárdalo, lo necesitas para cancelar.`,
-        );
+        setCodigo(body.codigoReserva);
       } else {
-        setMensaje(body?.error ?? "No se pudo reservar.");
-        router.refresh(); // si el horario ya fue tomado, la vista lo muestra ocupado
+        setError(body?.error ?? "No se pudo reservar.");
+        setPaso("inicio");
+        router.refresh();
       }
     } catch {
-      setMensaje("No se pudo conectar. Intenta nuevamente.");
+      setError("No se pudo conectar. Intenta nuevamente.");
+      setPaso("inicio");
     }
   }
 
-  if (mensaje) return <strong role="status">{mensaje}</strong>;
+  if (codigo) {
+    return (
+      <strong role="status" className="mensaje-estado ok">
+        Reserva confirmada. Tu código es {codigo}: guárdalo, lo necesitas para cancelar.
+      </strong>
+    );
+  }
+
+  if (paso === "confirmar" || paso === "enviando") {
+    return (
+      <span className="acciones">
+        <button type="button" onClick={reservar} disabled={paso === "enviando"}>
+          {paso === "enviando" ? "Reservando…" : `Confirmar ${horaInicio}`}
+        </button>
+        <button type="button" className="secundario" onClick={() => setPaso("inicio")} disabled={paso === "enviando"}>
+          No
+        </button>
+      </span>
+    );
+  }
+
   return (
-    <button type="button" onClick={reservar}>
-      Reservar
-    </button>
+    <>
+      <button type="button" onClick={() => setPaso("confirmar")}>
+        Reservar
+      </button>
+      {error && (
+        <span role="alert" className="mensaje-estado error">
+          {error}
+        </span>
+      )}
+    </>
   );
 }

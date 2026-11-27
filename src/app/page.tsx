@@ -6,7 +6,6 @@ import { BotonReservar } from "./boton-reservar";
 
 export const dynamic = "force-dynamic";
 
-// HU-01 y HU-02: el jugador ve la disponibilidad del día y reserva un horario libre.
 export default async function InicioPage({
   searchParams,
 }: {
@@ -19,29 +18,31 @@ export default async function InicioPage({
   return (
     <main>
       <h1>Reserva de canchas</h1>
-      <form>
-        <label>
-          Día <input type="date" name="fecha" defaultValue={fecha} />
-        </label>{" "}
-        <button type="submit">Ver disponibilidad</button>
-      </form>
+      <p className="sub">Elige un día y reserva un horario libre. Si no puedes ir, cancela con tu código.</p>
 
-      {!dia.hayLibres && <p>No hay horarios disponibles para este día.</p>}
+      <section className="card">
+        <form className="barra">
+          <label className="campo">
+            <span>Día</span>
+            <input type="date" name="fecha" defaultValue={fecha} />
+          </label>
+          <button type="submit">Ver disponibilidad</button>
+        </form>
+
+        {!dia.hayLibres && <p className="vacio">No hay horarios disponibles para este día.</p>}
+      </section>
 
       {dia.canchas.map((cancha) => (
-        <section key={cancha.id}>
+        <section key={cancha.id} className="card">
           <h2>{cancha.nombre}</h2>
-          <ul>
+          <ul className="fichas lista">
             {cancha.slots.map((slot) => (
-              <li key={slot.horaInicio}>
-                {slot.horaInicio} —{" "}
-                {slot.libre ? (
-                  <>
-                    libre{" "}
-                    <BotonReservar canchaId={cancha.id} fecha={fecha} horaInicio={slot.horaInicio} />
-                  </>
-                ) : (
-                  "ocupado"
+              <li key={slot.horaInicio} className={slot.libre ? "ficha-fila" : "ficha-fila ocupado"}>
+                <span>
+                  {slot.horaInicio} — {slot.libre ? "libre" : "ocupado"}
+                </span>
+                {slot.libre && (
+                  <BotonReservar canchaId={cancha.id} fecha={fecha} horaInicio={slot.horaInicio} />
                 )}
               </li>
             ))}
@@ -49,8 +50,8 @@ export default async function InicioPage({
         </section>
       ))}
 
-      <p>
-        <Link href="/cancelar">Cancelar una reserva</Link>
+      <p className="pie">
+        <Link href="/cancelar">Cancelar una reserva</Link> · <Link href="/admin">Administración</Link>
       </p>
     </main>
   );
