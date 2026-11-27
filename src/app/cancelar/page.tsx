@@ -38,35 +38,37 @@ export default function CancelarPage() {
   }
 
   return (
-    <main>
-      <h1>Cancelar reserva</h1>
-      <p className="sub">Escribe el código de 6 dígitos que recibiste al reservar.</p>
-      <section className="card">
+    <main className="contenedor angosto">
+      <div className="ticket">
+        <h1>Cancelar mi reserva</h1>
+        <p className="sub">Escribe el código de 6 dígitos que te mostramos al reservar. Tu horario volverá a quedar libre.</p>
         <form onSubmit={cancelar}>
           <label className="campo">
             <span>Código de reserva</span>
             <input
               type="text"
               inputMode="numeric"
+              autoComplete="off"
               maxLength={6}
+              className="entrada-codigo"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))}
-              placeholder="Los 6 dígitos de tu reserva"
+              placeholder="000000"
               required
             />
           </label>
-          <button type="submit" disabled={enviando}>
+          <button type="submit" className="boton peligro bloque" disabled={enviando}>
             {enviando ? "Cancelando…" : "Cancelar reserva"}
           </button>
         </form>
         {mensaje && (
-          <p role="status" className={`mensaje-estado ${esError ? "error" : "ok"}`}>
+          <p role="status" className={`alerta ${esError ? "error" : "exito"}`}>
             {mensaje}
           </p>
         )}
-      </section>
+      </div>
       <p className="pie">
-        <Link href="/">Volver a reservas</Link>
+        <Link href="/">← Volver a reservar</Link>
       </p>
     </main>
   );

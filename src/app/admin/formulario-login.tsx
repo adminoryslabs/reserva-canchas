@@ -38,11 +38,11 @@ export function FormularioLogin() {
         <span>Contraseña</span>
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
       </label>
-      <button type="submit" disabled={enviando}>
+      <button type="submit" className="boton bloque" disabled={enviando}>
         {enviando ? "Entrando…" : "Entrar"}
       </button>
       {mensaje && (
-        <p role="alert" className="mensaje-estado error">
+        <p role="alert" className="alerta error">
           {mensaje}
         </p>
       )}
