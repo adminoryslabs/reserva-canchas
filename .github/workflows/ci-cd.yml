@@ -1,0 +1,84 @@
+# Pipeline de DEPLOY-PLAN.md: test -> deploy -> smoke.
+# Vercel no despliega por push (vercel.json: git.deploymentEnabled=false);
+# el unico camino a produccion es el Deploy Hook que dispara el job deploy.
+# Repositorio publico: nunca usar pull_request_target ni imprimir secretos.
+name: CI/CD
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Pruebas y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: reservas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d reservas_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # El typecheck necesita el cliente de Prisma; npm ci no siempre lo genera.
+      - run: npx prisma generate
+      - run: npm run typecheck
+      # vitest carga .env.test, que apunta al service container de arriba.
+      - run: npm run test
+      # SEC-02: nunca "npm audit fix --force" (propone next 16).
+      - run: npm audit --omit=dev --audit-level=critical
+      - run: npm run build
+
+  deploy:
+    name: Deploy
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Disparar el Deploy Hook de Vercel
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Falta el secret VERCEL_DEPLOY_HOOK_URL"
+            exit 1
+          fi
+          curl --fail --silent --show-error -X POST -o /dev/null "$VERCEL_DEPLOY_HOOK_URL"
+          echo "Deploy Hook disparado para ${GITHUB_SHA}"
+
+  smoke:
+    name: Smoke
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      statuses: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Checks de solo lectura contra produccion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: bash scripts/smoke.sh "$PRODUCTION_URL" "$GITHUB_SHA"
