@@ -7,9 +7,12 @@ export function FormularioLogin() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
   async function entrar(e: React.FormEvent) {
     e.preventDefault();
+    setEnviando(true);
+    setMensaje("");
     try {
       const res = await fetch("/api/admin/login", {
         method: "POST",
@@ -24,17 +27,25 @@ export function FormularioLogin() {
       }
     } catch {
       setMensaje("No se pudo conectar. Intenta nuevamente.");
+    } finally {
+      setEnviando(false);
     }
   }
 
   return (
     <form onSubmit={entrar}>
-      <label>
-        Contraseña{" "}
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      </label>{" "}
-      <button type="submit">Entrar</button>
-      {mensaje && <p>{mensaje}</p>}
+      <label className="campo">
+        <span>Contraseña</span>
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+      </label>
+      <button type="submit" className="boton bloque" disabled={enviando}>
+        {enviando ? "Entrando…" : "Entrar"}
+      </button>
+      {mensaje && (
+        <p role="alert" className="alerta error">
+          {mensaje}
+        </p>
+      )}
     </form>
   );
 }
