@@ -1,11 +1,18 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "actualizar-docs": {
       "source": "adminoryslabs/Armory",
       "sourceType": "github",
       "skillPath": "skills/actualizar-docs/SKILL.md",
-      "computedHash": "4cccaad41be5c18d63ccf76f6ed998b76e201bcb4e84b1f4ca472ff924faed77"
+      "computedHash": "490a769059975b480563be910c1c9d7a62c60e0a8b9111bae0cc73691d021c9c"
+    },
+    "security-pass": {
+      "source": "adminoryslabs/Armory",
+      "commit": "59ae527a898469fe7d683f074f38e353419c60a7",
+      "sourceType": "github",
+      "skillPath": "skills/security-pass/SKILL.md",
+      "computedHash": "0c353821d3d5f6907bf8ffaa8cab6358753eef4c86b42b4ce248cfb750330fa6"
     }
   }
 }

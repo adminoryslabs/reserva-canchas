@@ -216,6 +216,16 @@ registra la contraseña de admin ni el `codigo_reserva` completo. Sin plataforma
 - **Fuerza bruta sobre el código de reserva y la contraseña admin**: mitigada con rate limiting por
   IP y sin exponer códigos en la agenda admin (ADR-0010, ADR-0002). **Riesgo residual**: un
   atacante con muchas IPs distribuidas no queda cubierto; debe reevaluarse antes de un uso real.
+- **Creación de reservas sin límite de intentos**: `POST /api/reservas` no tiene rate limiting
+  (ADR-0010 solo cubre la cancelación y el login admin). Un script puede ocupar todos los horarios
+  y, como cada reserva consume para siempre uno de los 10⁶ códigos posibles (ADR-0002), agotar el
+  espacio de códigos. **Riesgo aceptado** el 2026-11-24 por Mario Yahuarcani: es un negocio pequeño
+  y nadie obtiene beneficio ocupando los horarios (`SECURITY-REPORT.md`, SEC-01). Si ocurre, se
+  resuelve manualmente borrando las reservas falsas directamente en la base de datos, porque la
+  aplicación no permite que el administrador cancele reservas; borrarlas libera los horarios y los
+  códigos. Sin una ventana de reserva (Punto Abierto #3 del PRD, SEC-03, que sigue abierto), agotar
+  los códigos es fácil; con ella seguiría siendo posible reservando y cancelando en ciclo, aunque
+  mucho más lento por el límite de intentos de la cancelación.
 - **Fuga mínima de información en la cancelación**: el 410 revela que un código existió y fue
   cancelado (ADR-0011). Aceptada: los códigos cancelados no se reutilizan ni dan acceso a nada.
 - **Contraseña única de administrador**: sin sistema de usuarios ni auditoría de acceso (ADR-0009);
